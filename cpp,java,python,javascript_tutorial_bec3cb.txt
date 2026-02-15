@@ -1,0 +1,160 @@
+// --- Learning Objective ---
+// This tutorial will teach you how to programmatically generate and render
+// the Mandelbrot fractal. We will focus on the core iterative algorithm
+// and how to translate the mathematical concept into graphical output.
+// This will involve understanding complex numbers, iteration, and mapping
+// results to pixel colors.
+
+// Language: Python
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def mandelbrot(c, max_iterations):
+    """
+    Calculates whether a complex number 'c' belongs to the Mandelbrot set.
+
+    The Mandelbrot set is defined by the recurrence relation:
+    z_{n+1} = z_n^2 + c
+    where z_0 = 0. A complex number 'c' is in the Mandelbrot set if the
+    magnitude of z_n remains bounded as n approaches infinity.
+
+    Args:
+        c (complex): The complex number to test.
+        max_iterations (int): The maximum number of iterations to perform.
+
+    Returns:
+        int: The number of iterations it took for the magnitude of 'z' to
+             exceed 2, or max_iterations if it remained bounded. This value
+             is used for coloring.
+    """
+    z = 0j  # Initialize z_0 to 0 (represented as a complex number 0 + 0j)
+    for i in range(max_iterations):
+        z = z*z + c  # The core Mandelbrot iteration: z_{n+1} = z_n^2 + c
+        # We check the magnitude of z. If it exceeds 2, the sequence will
+        # diverge to infinity, meaning 'c' is NOT in the Mandelbrot set.
+        # The square of the magnitude (|z|^2) is z.real*z.real + z.imag*z.imag.
+        # Checking against 4 (which is 2^2) avoids a costly square root operation.
+        if (z.real * z.real + z.imag * z.imag) > 4.0:
+            return i  # Return the iteration count, indicating divergence
+    return max_iterations # If the loop completes, 'c' is likely in the set
+
+def generate_mandelbrot_image(width, height, x_min, x_max, y_min, y_max, max_iterations):
+    """
+    Generates a 2D array representing the Mandelbrot fractal.
+
+    This function iterates through each pixel in the desired output image,
+    maps its screen coordinates to a corresponding complex number in the
+    complex plane, and then calls the 'mandelbrot' function to determine
+    its escape time (or boundedness).
+
+    Args:
+        width (int): The desired width of the output image in pixels.
+        height (int): The desired height of the output image in pixels.
+        x_min (float): The minimum real value of the complex plane to render.
+        x_max (float): The maximum real value of the complex plane to render.
+        y_min (float): The minimum imaginary value of the complex plane to render.
+        y_max (float): The maximum imaginary value of the complex plane to render.
+        max_iterations (int): The maximum number of iterations for the Mandelbrot calculation.
+
+    Returns:
+        numpy.ndarray: A 2D array where each element represents the escape
+                       time (color information) for the corresponding pixel.
+    """
+    # Create a grid of complex numbers that corresponds to the pixels.
+    # np.linspace creates evenly spaced numbers over a specified interval.
+    # We create arrays for the real and imaginary parts.
+    real_axis = np.linspace(x_min, x_max, width)
+    imag_axis = np.linspace(y_min, y_max, height)
+
+    # Initialize an empty array to store the iteration counts for each pixel.
+    # This array will have dimensions (height, width).
+    mandelbrot_image = np.zeros((height, width), dtype=int)
+
+    # Iterate over each pixel in the image.
+    # We use nested loops to cover every row (y-coordinate) and column (x-coordinate).
+    for y in range(height):
+        for x in range(width):
+            # Map the pixel coordinates (x, y) to a complex number 'c'.
+            # The real part of 'c' corresponds to the horizontal position (x).
+            # The imaginary part of 'c' corresponds to the vertical position (y).
+            # We scale the pixel coordinates to the range of the complex plane defined by x_min/max and y_min/max.
+            real_part = real_axis[x]
+            imag_part = imag_axis[y]
+            c = complex(real_part, imag_part)
+
+            # Calculate the escape time for this complex number 'c'.
+            # This tells us how quickly the iteration diverged, or if it didn't diverge.
+            escape_time = mandelbrot(c, max_iterations)
+
+            # Store the escape time in our image array.
+            # The `mandelbrot_image[y, x]` assignment maps the calculated escape_time
+            # to the corresponding pixel location (column x, row y).
+            mandelbrot_image[y, x] = escape_time
+
+    return mandelbrot_image
+
+# --- Example Usage ---
+
+if __name__ == "__main__":
+    # Define the image dimensions (resolution).
+    image_width = 800
+    image_height = 800
+
+    # Define the region of the complex plane to render.
+    # This is the "standard" view of the Mandelbrot set.
+    x_min_plane = -2.0
+    x_max_plane = 1.0
+    y_min_plane = -1.5
+    y_max_plane = 1.5
+
+    # Set the maximum number of iterations. Higher values reveal more detail
+    # but take longer to compute.
+    max_iter = 100
+
+    print("Generating Mandelbrot fractal...")
+    # Generate the Mandelbrot fractal data.
+    fractal_data = generate_mandelbrot_image(
+        image_width, image_height,
+        x_min_plane, x_max_plane,
+        y_min_plane, y_max_plane,
+        max_iter
+    )
+    print("Generation complete.")
+
+    # Render the fractal using matplotlib.
+    # 'cmap' (colormap) determines how the iteration counts (escape times)
+    # are mapped to colors. 'hot' is a common choice for fractals.
+    # 'origin='upper'' ensures that the (0,0) pixel corresponds to the
+    # top-left corner of the image, matching typical image conventions.
+    plt.figure(figsize=(10, 10)) # Set the figure size for better display
+    plt.imshow(fractal_data, extent=(x_min_plane, x_max_plane, y_min_plane, y_max_plane), cmap='hot', origin='upper')
+    plt.title("Mandelbrot Fractal")
+    plt.xlabel("Real")
+    plt.ylabel("Imaginary")
+    plt.colorbar(label="Escape Iterations") # Add a color bar to show the mapping
+    plt.show()
+
+    # Example of zooming into a specific region
+    print("\nGenerating zoomed-in view...")
+    zoom_x_min = -0.75
+    zoom_x_max = -0.74
+    zoom_y_min = 0.1
+    zoom_y_max = 0.11
+    max_iter_zoom = 500 # Increased iterations for more detail in zoom
+
+    zoomed_fractal_data = generate_mandelbrot_image(
+        image_width, image_height,
+        zoom_x_min, zoom_x_max,
+        zoom_y_min, zoom_y_max,
+        max_iter_zoom
+    )
+    print("Zoomed view generation complete.")
+
+    plt.figure(figsize=(10, 10))
+    plt.imshow(zoomed_fractal_data, extent=(zoom_x_min, zoom_x_max, zoom_y_min, zoom_y_max), cmap='hot', origin='upper')
+    plt.title("Mandelbrot Fractal (Zoomed)")
+    plt.xlabel("Real")
+    plt.ylabel("Imaginary")
+    plt.colorbar(label="Escape Iterations")
+    plt.show()
